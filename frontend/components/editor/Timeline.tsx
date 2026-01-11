@@ -1,4 +1,4 @@
-import { Clip, Track } from "@/lib/types";
+import { Clip, Track, Speaker } from "@/lib/types";
 import { EFFECTS } from "@/lib/effects";
 import { Plus, ZoomIn, MessageSquare, Music, Film, VolumeX, Volume2 } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
@@ -13,11 +13,13 @@ interface TimelineProps {
     setTracks: (t: Track[]) => void;
     setAddTrackModal: (open: boolean) => void;
     handleFileDrop: (e: any, trackId: string, time?: number) => void;
+    addDialogueClip: (trackId: string, time?: number) => void;
     handleTimelineMouseDown: (e: any, clipId: string, type: 'move' | 'resize') => void;
-    handleTimelineDoubleClick: (e: any, trackId: string) => void;
     selectedClipId: string | null;
+    setSelectedClipId: (id: string | null) => void;
     timelineRef: React.RefObject<HTMLDivElement>;
     height: number;
+    speakers: Speaker[];
 }
 
 export function Timeline({
@@ -30,11 +32,13 @@ export function Timeline({
     setTracks,
     setAddTrackModal,
     handleFileDrop,
+    addDialogueClip,
     handleTimelineMouseDown,
-    handleTimelineDoubleClick,
     selectedClipId,
+    setSelectedClipId,
     timelineRef,
-    height
+    height,
+    speakers
 }: TimelineProps) {
     const renderTrackIcon = (type: string) => {
         switch (type) {
@@ -47,13 +51,13 @@ export function Timeline({
     const getClipColor = (c: Clip) => {
         if (c.type === 'dialogue') return 'bg-amber-900/80 border-amber-700 text-amber-100';
         else if (c.type === 'audio') return 'bg-emerald-900/80 border-emerald-700 text-emerald-100';
-        else if (c.type === 'video' || c.type === 'image') return 'bg-blue-900/80 border-blue-700 text-blue-100';
+        else if (c.type === 'video' || c.type === 'picture') return 'bg-blue-900/80 border-blue-700 text-blue-100';
         else if (EFFECTS[c.type]) return 'bg-purple-900/80 border-purple-700 text-purple-100';
         return 'bg-slate-700 border-slate-600';
     };
 
     return (
-        <div className="bg-[#0c0c0e] border-t border-slate-800 flex flex-col relative shrink-0" ref={timelineRef} style={{ height }}>
+        <div className="bg-[#0c0c0e] border-t border-slate-800 flex flex-col relative" ref={timelineRef} style={{ height, minHeight: '150px', maxHeight: '80vh' }}>
             {/* TOOLBAR */}
             <div className="h-10 bg-[#121214] border-b border-slate-800 flex items-center px-4 gap-4 shrink-0">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Timeline</span>
@@ -92,10 +96,20 @@ export function Timeline({
                                 <div className="text-[10px] text-slate-600">{t.type.toUpperCase()}</div>
                             </div>
 
-                            <div className="relative h-8 border border-dashed border-slate-700 rounded flex items-center justify-center text-[10px] text-slate-500 hover:border-indigo-500 hover:text-indigo-400 transition-colors cursor-pointer bg-slate-900/50">
-                                <span>Drop File</span>
-                                <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleFileDrop(e, t.id)} />
-                            </div>
+                            {t.type === 'dialogue' ? (
+                                <button
+                                    onClick={() => addDialogueClip(t.id)}
+                                    className="w-full h-8 border border-dashed border-amber-700/50 rounded flex items-center justify-center text-[10px] text-amber-500 hover:border-amber-500 hover:text-amber-400 hover:bg-amber-900/20 transition-colors cursor-pointer bg-slate-900/50"
+                                >
+                                    <Plus size={12} className="mr-1" />
+                                    Add Dialogue
+                                </button>
+                            ) : (
+                                <div className="relative h-8 border border-dashed border-slate-700 rounded flex items-center justify-center text-[10px] text-slate-500 hover:border-indigo-500 hover:text-indigo-400 transition-colors cursor-pointer bg-slate-900/50">
+                                    <span>Drop File</span>
+                                    <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleFileDrop(e, t.id)} />
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
@@ -120,7 +134,6 @@ export function Timeline({
                         {tracks.map(t => (
                             <div key={t.id}
                                 className="h-28 border-b border-slate-800/50 relative group hover:bg-white/5 transition-colors"
-                                onDoubleClick={(e) => handleTimelineDoubleClick(e, t.id)}
                                 onDragOver={e => e.preventDefault()}
                                 onDrop={e => handleFileDrop(e, t.id, (e.nativeEvent.offsetX / (50 * zoom)))}
                             >
@@ -130,15 +143,26 @@ export function Timeline({
                                     const isSelected = selectedClipId === c.id;
                                     const colorClass = getClipColor(c);
 
+                                    const speaker = speakers.find(s => s.id === c.speaker);
+
                                     return (
                                         <div key={c.id}
                                             className={`absolute top-3 bottom-3 rounded-md border text-xs px-2 py-1 overflow-hidden cursor-pointer select-none shadow-md ${colorClass} ${isSelected ? 'ring-2 ring-white z-20 shadow-xl' : 'z-10 opacity-90 hover:opacity-100'}`}
                                             style={{ left: `${left}%`, width: `${width}%` }}
                                             onMouseDown={(e) => handleTimelineMouseDown(e, c.id, 'move')}
-                                            onClick={(e) => e.stopPropagation()}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedClipId(c.id);
+                                            }}
                                         >
-                                            <div className="truncate font-bold text-[10px] uppercase tracking-wider mb-0.5 opacity-70">{c.name}</div>
-                                            {c.type === 'dialogue' && <div className="truncate text-[11px] font-serif italic opacity-90">"{c.content}"</div>}
+                                            <div className="truncate font-bold text-[10px] uppercase tracking-wider mb-0.5 opacity-70">
+                                                {c.type === 'dialogue' && speaker && (
+                                                    <span className="mr-1" style={{ color: speaker.color }}>●</span>
+                                                )}
+                                                {c.name}
+                                                {c.isStale && <span className="ml-1 text-red-400">⚠</span>}
+                                            </div>
+                                            {c.type === 'dialogue' && <div className="truncate text-[11px] font-serif italic opacity-90">"{c.content || c.scriptText || ''}"</div>}
 
                                             {/* Handles */}
                                             <div
