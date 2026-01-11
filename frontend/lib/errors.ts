@@ -61,8 +61,8 @@ export class AppError extends Error {
  * Audio-related errors (recording, playback, encoding)
  */
 export class AudioError extends AppError {
-    constructor(message: string, code: string, context: Record<string, any> = {}) {
-        super(message, code, LogCategory.AUDIO, context);
+    constructor(message: string, code: string, context: Record<string, any> = {}, recoverable: boolean = true) {
+        super(message, code, LogCategory.AUDIO, context, recoverable);
     }
 
     static microphoneAccessDenied(details?: string): AudioError {
@@ -111,8 +111,8 @@ export class AudioError extends AppError {
  * Video/Export-related errors
  */
 export class ExportError extends AppError {
-    constructor(message: string, code: string, context: Record<string, any> = {}) {
-        super(message, code, LogCategory.EXPORT, context);
+    constructor(message: string, code: string, context: Record<string, any> = {}, recoverable: boolean = true) {
+        super(message, code, LogCategory.EXPORT, context, recoverable);
     }
 
     static ffmpegNotAvailable(): ExportError {
